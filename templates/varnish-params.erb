@@ -44,9 +44,9 @@ VARNISH_SECRET_FILE=<%= scope.lookupvar('varnish_secret_file') %>
 # 
 # # Backend storage specification
 <% if scope.lookupvar('storage_type') == 'malloc' %>
-VARNISH_STORAGE="<%= scope.lookupvar('storage_type') %>,${VARNISH_STORAGE_SIZE}"
+VARNISH_STORAGE="<%= scope.lookupvar('storage_type') %>,<%= scope.lookupvar('varnish_storage_size') %>"
 <% else %>
-VARNISH_STORAGE="<%= scope.lookupvar('storage_type') %>,${VARNISH_STORAGE_FILE},${VARNISH_STORAGE_SIZE}"
+VARNISH_STORAGE="<%= scope.lookupvar('storage_type') %>,<%= scope.lookupvar('varnish_secret_file') %>,<%= scope.lookupvar('varnish_storage_size') %>"
 <% end %>
 
 # Should we start varnishd at boot?  Set to "no" to disable.
