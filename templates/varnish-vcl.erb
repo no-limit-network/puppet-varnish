@@ -158,8 +158,8 @@ sub vcl_backend_response {
   }
 
   # remove "must-revalidate"  
-  if (berest.http.Cache-Control ~ "must-revalidate") {
-  	berest.http.Cache-Control = regsuball(berest.http.Cache-Control, "must-revalidate *,?", "");
+  if (beresp.http.Cache-Control ~ "must-revalidate") {
+  	beresp.http.Cache-Control = regsuball(beresp.http.Cache-Control, "must-revalidate *,?", "");
   }
 
   # Default minimum cache period 
