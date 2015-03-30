@@ -107,6 +107,11 @@ sub vcl_recv {
      /* Non-RFC2616 or CONNECT which is weird. */
      return (pipe);
   }
+  
+  # always pass through POST requests and those with basic auth
+  if (req.http.Authorization || req.request == "POST") {
+	  return (pass);
+  }
 }
 
 #sub vcl_hash {
