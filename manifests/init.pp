@@ -92,7 +92,6 @@ class varnish (
     } else {
       class { 'varnish::shmlog':
         shmlog_dir  => $shmlog_dir,
-        shmlog_size => "128M",
         require     => Package['varnish'],
       }
     }
