@@ -152,6 +152,11 @@ sub vcl_backend_response {
     unset beresp.http.Set-Cookie;
   }
 
+  # remove "must-revalidate"  
+  if (berest.http.Cache-Control ~ "must-revalidate") {
+  	berest.http.Cache-Control = regsuball(berest.http.Cache-Control, "must-revalidate *,?", "");
+  }
+
   # Default minimum cache period 
   if(!(bereq.http.Cookie)&&!(beresp.http.Set-Cookie)&&(bereq.method == "GET")) {
      set beresp.ttl = <%= @min_cache_time %>;
