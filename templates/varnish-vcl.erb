@@ -136,18 +136,6 @@ sub vcl_pass {
    std.log( "CACHE-DEBUG URL:"+req.url+" COOKIE:"+req.http.Cookie+" AVISO:PASS IP:"+client.ip);
 }
 
-# strip the cookie before the image is inserted into cache.
-sub vcl_fetch {
-   if ( 
-     # Static file cache
-     (bereq.url ~ "(?i)\.(jpg|jpeg|gif|png|tiff|tif|svg|swf|ico|css|kss|js|vsd|doc|ppt|pps|xls|pdf|mp3|mp4|m4a|ogg|mov|avi|wmv|sxw|zip|gz|bz2|tar|rar|odc|odb|odf|odg|odi|odp|ods|odt|sxc|sxd|sxi|sxw|dmg|torrent|deb|msi|iso|rpm|jar|class|flv|exe)$")||
-     # Plone images cache
-     (bereq.url ~ "(?i)(image|imagem_large|image_preview|image_mini|image_thumb|image_tile|image_icon|imagem_listing)$")
-  ) {
-        unset beresp.http.set-cookie;
-    }
-}
-
 sub vcl_backend_response {
 
 <%- if @defaultgrace -%>
