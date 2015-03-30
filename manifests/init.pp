@@ -83,10 +83,18 @@ class varnish (
 
   # mount shared memory log dir as tempfs
   if $shmlog_tempfs {
-    class { 'varnish::shmlog':
-      shmlog_dir  => $shmlog_dir,
-      shmlog_size => $varnish_storage_size,
-      require     => Package['varnish'],
+    if $storage_type == "malloc" {
+      class { 'varnish::shmlog':
+        shmlog_dir  => $shmlog_dir,
+        shmlog_size => $varnish_storage_size,
+        require     => Package['varnish'],
+      }
+    } else {
+      class { 'varnish::shmlog':
+        shmlog_dir  => $shmlog_dir,
+        shmlog_size => "128M",
+        require     => Package['varnish'],
+      }
     }
   }
 
