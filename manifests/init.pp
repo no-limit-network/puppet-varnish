@@ -108,6 +108,18 @@ class varnish (
     require => Package['varnish'],
     notify  => Exec['restart-varnish'],
   }
+  
+  # varnish config file
+  file { 'varnish-params':
+    ensure  => present,
+    path    => "/etc/varnish/varnish.params",
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0644',
+    content => template('varnish/varnish-params.erb'),
+    require => Package['varnish'],
+    notify  => Exec['restart-varnish'],
+  }
 
   # storage dir
   $varnish_storage_dir = regsubst($varnish_storage_file, '(^/.*)(/.*$)', '\1')
