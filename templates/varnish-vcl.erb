@@ -109,7 +109,7 @@ sub vcl_recv {
   }
   
   # always pass through POST requests and those with basic auth
-  if (req.http.Authorization || req.request == "POST") {
+  if (req.http.Authorization || req.method == "POST") {
 	  return (pass);
   }
 }
