@@ -10,6 +10,9 @@ include "includes/probes.vcl";
 #Import file with backend definitions
 include "includes/backends.vcl";
 
+#Import file with director definitions;
+include "includes/directors.vcl";
+
 #Import file with acl definitions
 include "includes/acls.vcl";
 
@@ -17,7 +20,7 @@ sub vcl_recv {
 
 <%- if @defaultgrace -%>
   # Default grace period
-  set req.grace = <%= @defaultgrace %>;
+  # set beresp.grace = <%= @defaultgrace %>;
 <%- end -%>
 <%- if @logrealip -%> 
   if (req.http.X-Forwarded-For) {
@@ -39,7 +42,7 @@ sub vcl_recv {
      set req.http.Cookie = regsuball(req.http.Cookie, ";[^ ][^;]*", "");
      set req.http.Cookie = regsuball(req.http.Cookie, "^[; ]+|[; ]+$", "");
     if (req.http.Cookie == "") {
-      remove req.http.Cookie;
+      unset req.http.Cookie;
     }
   }
 
@@ -51,13 +54,13 @@ sub vcl_recv {
      # Plone resource editor
      (req.url !~ "(?i)\@\@plone\.resourceeditor\.getfile\?path\=")
      ) {
-     remove req.http.Cookie;
+     unset req.http.Cookie;
   }
 
   <%- if @blockedips.length > 0 -%>
   # blocked list
   if ((client.ip ~ blockedips)<%- if @blockedbots.length > 0 -%>||(req.http.User-Agent ~ "(?i)<%- @blockedbots.each do |bot| -%><%= bot %><%- if cookie != @blockedbots[-1] -%>|<%-end-%><%-end-%>")<%-end-%>) {
-      error 403 "Access forbidden.";
+      return (synth(403, "Access forbidden."));
   }
   <%- end -%>
 
@@ -73,10 +76,10 @@ sub vcl_recv {
   include "includes/waf.vcl";
   if (!(req.http.RULE == "")) {
     std.log( "ATTACK SIGNATURE rules:"+req.http.RULE+" url:"+req.url+" COOKIE:"+req.http.Cookie+"   IP:"+client.ip);
-    error 403 "ATTACK DETECTED - IP LOGGED";
+    return (synth(403, "ATTACK DETECTED - IP LOGGED"));
   }
-  remove req.http.EXCE;
-  remove req.http.RULE;
+  unset req.http.EXCE;
+  unset req.http.RULE;
   <%- end -%>
 
   # backend selection logic
@@ -84,9 +87,9 @@ sub vcl_recv {
 
   <%- if @purgeips.length > 0 -%>
   # Allows purge for the IPs in purge ACL
-  if (req.request == "PURGE") {
+  if (req.method == "PURGE") {
     if (!(client.ip ~ purge)) {
-        error 405 "Not allowed.";
+        return (synth(405, "Not allowed."));
     }
     ban(" req.url == " + req.url);
     set req.url = regsuball(req.url,"80","443"); 
@@ -94,17 +97,17 @@ sub vcl_recv {
     ban(" req.url == " + req.url);
     # Throw a synthetic page so the
     # request won't go to the backend.
-    error 200 "Added ban.";      
+    return (synth(200, "Added ban."));
   }
   <%- end -%>
 
-  if (req.request != "GET" &&
-      req.request != "HEAD" &&
-      req.request != "PUT" &&
-      req.request != "POST" &&
-      req.request != "TRACE" &&
-      req.request != "OPTIONS" &&
-      req.request != "DELETE") {
+  if (req.method != "GET" &&
+      req.method != "HEAD" &&
+      req.method != "PUT" &&
+      req.method != "POST" &&
+      req.method != "TRACE" &&
+      req.method != "OPTIONS" &&
+      req.method != "DELETE") {
      /* Non-RFC2616 or CONNECT which is weird. */
      return (pipe);
   }
@@ -123,17 +126,15 @@ sub vcl_pipe {
 
 sub vcl_hit {
    std.log( "CACHE-DEBUG URL:"+req.url+" COOKIE:"+req.http.Cookie+" AVISO:HIT IP:"+client.ip);
-   if (req.request == "PURGE") {
-      purge;
-      error 200 "Purged.";
+   if (req.method == "PURGE") {
+      return (synth(200, "Purged."));
    }
 }
 
 sub vcl_miss {
     std.log( "CACHE-DEBUG URL:"+req.url+" COOKIE:"+req.http.Cookie+" AVISO:MISS IP:"+client.ip);
-    if (req.request == "PURGE") {
-       purge;
-       error 200 "Purged.";
+    if (req.method == "PURGE") {
+       return (synth(200, "Purged."));
     }
 }
 
@@ -145,7 +146,7 @@ sub vcl_backend_response {
 
 <%- if @defaultgrace -%>
   # Default grace period
-  set bereq.grace = <%= @defaultgrace %>;
+  set beresp.grace = <%= @defaultgrace %>;
 <%- end -%>
   
   if (beresp.http.content-type ~ "<%- @gziptypes.each do |type| -%>^<%= type %><%- if type != @gziptypes[-1] -%>|<%-end-%><%-end-%>") {
@@ -154,11 +155,11 @@ sub vcl_backend_response {
  
   # Remove I18N_LANGUAGE Set-Cookie 
   if (beresp.http.Set-Cookie ~ "I18N_LANGUAGE") {
-    remove beresp.http.Set-Cookie;
+    unset beresp.http.Set-Cookie;
   }
 
   # Default minimum cache period 
-  if(!(bereq.http.Cookie)&&!(beresp.http.Set-Cookie)&&(bereq.request == "GET")) {
+  if(!(bereq.http.Cookie)&&!(beresp.http.Set-Cookie)&&(bereq.method == "GET")) {
      set beresp.ttl = <%= @min_cache_time %>;
   }
 
@@ -169,13 +170,14 @@ sub vcl_backend_response {
      (bereq.url ~ "(?i)(image|imagem_large|image_preview|image_mini|image_thumb|image_tile|image_icon|imagem_listing)$")
   ) {
     set beresp.ttl = <%= @static_cache_time %>;
-    remove beresp.http.Set-Cookie;
+    unset beresp.http.Set-Cookie;
   }
 
   #Avoid cache of objects > 100M
   if ( beresp.http.Content-Length ~ "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" ) { 
     set beresp.ttl = <%= @static_cache_time %>; 
-    return (hit_for_pass);
+    set beresp.uncacheable = true;
+    return (deliver);
   } 
  
 }
@@ -192,37 +194,36 @@ sub vcl_backend_error {
      
      ## Moved Permanently
      if (beresp.status == 750) {
-        set beresp.http.Location = beresp.response;
+        set beresp.http.Location = bereq.url; ## FIXME
         set beresp.status = 301;
         return(deliver);
      }
 
      set beresp.http.Content-Type = "text/html; charset=utf-8";
      set beresp.http.Retry-After = "5";
-     synthetic {"
- <?xml version="1.0" encoding="utf-8"?>
+     synthetic ({"
+ <?xml version='1.0' encoding='utf-8'?>
  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
  <html>
    <head>
-     <title>"} + beresp.status + " " + beresp.response + {"</title>
+     <title>"} + beresp.status + " " + beresp.reason + {"</title>
    </head>
    <body>
-     <h1>Error "} + beresp.status + " " + beresp.response + {"</h1>
-     <p>"} + beresp.response + {"</p>
+     <h1>Error "} + beresp.status + " " + beresp.reason + {"</h1>
+     <p>"} + beresp.reason + {"</p>
      <h3>Guru Meditation:</h3>
-     <p>XID: "} + req.xid + {"</p>
+     <p>XID: "} + bereq.xid + {"</p>
      <hr>
     <p>Varnish cache server</p>
    </body>
  </html>
- "};
-     return (deliver);
+ "});
+   return (deliver);
 }
 # 
 sub vcl_init {
-#Import file with director definitions;
-  include "includes/directors.vcl";
+	call directors_init;
 	return (ok);
 }
 # 

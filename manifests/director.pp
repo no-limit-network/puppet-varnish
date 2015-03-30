@@ -1,6 +1,6 @@
 #director.pp
 define varnish::director(
-  $type = 'round-robin',
+  $type = 'round_robin',
   $backends = [],
 ) {
 
