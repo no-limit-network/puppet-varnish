@@ -52,6 +52,11 @@ sub vcl_recv {
      ) {
      unset req.http.Cookie;
   }
+  if (req.url ~ "(?i)/modules/pm_adsandslideshow/phpThumb/phpThumb.php\?") {
+    std.log( "CACHE-DEBUG URL:"+req.url+" COOKIE:"+req.http.Cookie+" REMOVED IP:"+client.ip);
+    unset req.http.Cookie;
+  }
+
 
   <%- if @blockedips.length > 0 -%>
   # blocked list
@@ -143,6 +148,8 @@ sub vcl_pass {
 
 sub vcl_backend_response {
 
+  unset beresp.http.X-Powered-By;
+  set beresp.http.Server = "No-limit-Network";
 <%- if @defaultgrace -%>
   # Default grace period
   set beresp.grace = <%= @defaultgrace %>;
@@ -176,6 +183,14 @@ sub vcl_backend_response {
     set beresp.ttl = <%= @static_cache_time %>;
     std.log( "CACHE-DEBUG Remove Cookie on image");
     unset beresp.http.Set-Cookie;
+  }
+
+  if (!(beresp.http.Expires)&&!(beresp.http.Cache-Control)) {
+    set beresp.ttl = <%= @static_cache_time %>;
+    set beresp.http.Cache-Control = "public, proxy-revalidate, max-age=" + beresp.ttl;
+    set beresp.http.Pragma = "public";
+    set beresp.http.Expires = "" + (now + beresp.ttl );
+    set beresp.http.X-NLN = "true";
   }
 
   #Avoid cache of objects > 100M
