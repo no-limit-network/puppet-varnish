@@ -77,7 +77,7 @@ VARNISH_THREAD_TIMEOUT=<%= scope.lookupvar('varnish_thread_timeout') %>
 #
 # # DAEMON_OPTS is used by the init script.  If you add or remove options, make
 # # sure you update this section, too.
-DAEMON_OPTS=" -n varnish\
+DAEMON_OPTS=" -n varnish \
 <% if scope.lookupvar('varnish::params::version') == 4 -%>
              -p thread_pool_min=${VARNISH_MIN_THREADS} \
              -p thread_pool_max=${VARNISH_MAX_THREADS} \
